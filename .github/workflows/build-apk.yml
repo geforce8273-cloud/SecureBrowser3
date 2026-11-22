@@ -23,22 +23,19 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Extract project ZIP
+      - name: Extract ZIP
         run: |
           ZIP=$(find . -type f -iname "*.zip" | head -n 1)
 
           if [ -z "$ZIP" ]; then
-            echo "ZIP file not found"
+            echo "ZIP not found"
             exit 1
           fi
 
-          mkdir extracted
+          mkdir -p extracted
           unzip -o "$ZIP" -d extracted
 
-      - name: Locate Android project
+      - name: Locate project
         run: |
           GRADLE=$(find extracted -name gradlew | head -n 1)
 
@@ -49,8 +46,17 @@ jobs:
 
           echo "PROJECT_DIR=$(dirname "$GRADLE")" >> "$GITHUB_ENV"
 
+      - name: Configure Android SDK
+        run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
       - name: Build APK
         run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
           cd "$PROJECT_DIR"
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
